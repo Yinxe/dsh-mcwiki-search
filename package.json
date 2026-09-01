@@ -17,6 +17,7 @@
   "files": [
     "lib",
     "client.js",
+    "cordis.patch.yml",
     "test",
     "scripts",
     "README.md",

@@ -1,0 +1,6 @@
+# @dshp-inx/mcwiki-search bundle patch: Minecraft Wiki query tools for DeepSeek Harness.
+# Provides mcwiki_search, mcwiki_get_page, mcwiki_random tools.
+
+- insert:
+    - id: mcwiki-search
+      name: "@dshp-inx/mcwiki-search"

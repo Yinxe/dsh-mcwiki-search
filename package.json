@@ -1,0 +1,64 @@
+{
+  "name": "@dshp-inx/mcwiki-search",
+  "version": "1.0.0",
+  "description": "DeepSeek Harness (DSH) tool plugin: query Minecraft Wiki (MediaWiki API) and convert raw wiki data into clean AI-readable text. 查询 Minecraft Wiki（中文/英文）并把搜索结果与页面全文转换成可直接投喂给 AI 的干净文本（搜索/引言/全文 Markdown/随机条目）。",
+  "license": "MIT",
+  "author": "Yinxe",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./api": "./lib/api.js",
+    "./convert": "./lib/convert.js",
+    "./self-test": "./lib/self-test.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "client.js",
+    "test",
+    "scripts",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "minecraft",
+    "minecraft-wiki",
+    "mediawiki",
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "plugin",
+    "tool",
+    "搜索",
+    "维基"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node lib/self-test.js",
+    "self-test": "node lib/self-test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yinxe/mcwiki-search.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Yinxe/mcwiki-search/issues"
+  },
+  "homepage": "https://github.com/Yinxe/mcwiki-search#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "dependencies": {}
+}

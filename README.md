@@ -37,32 +37,46 @@ MediaWiki API JSON
        └─ 输出完整不截断（默认）；传 maxChars 正整数才设上限并标注
 ```
 
-## 安装（本机 DSH）
-
-插件以**标准 DSH 插件包**形式放在 `~/.dsh/plugins/`（随部署走，npx 升级不丢）：
+## 安装（推荐：GitHub）
 
 ```sh
-# 一键安装（推荐）：链接 + 追加 cordis.patch.yml 挂载行（幂等）
-./scripts/install-web.sh            # 默认 profile=web
+dsh plugin --profile web add github:Yinxe/dsh-mcwiki-search
+```
 
-# 或手动三步
-cd ~/.dsh/profiles/web
-pnpm add --offline "mcwiki-search@link:../../plugins/mcwiki-search"
-rm -rf node_modules/mcwiki-search
-ln -s /home/yinxin/.dsh/plugins/mcwiki-search node_modules/mcwiki-search
-# 并在 cordis.patch.yml 增加：
-#   - insert:
-#       - id: mcwiki-search
-#         name: mcwiki-search
+`dsh plugin` 把参数转发给 profile 目录里的 pnpm，装完自动把插件写进 profile 的 `dsh.profile.bundles` 挂载列表 —— **无需手动改任何配置文件**。
 
-# 重启
+重启生效：
+
+```sh
 dsh web
 ```
 
-重启后验证：
+**验证**：打开 web 页面 → 设置 → Minecraft Wiki 搜索 出现插件卡片；或直接对模型说「用 mcwiki_search 查一下苦力怕」。
 
-- 设置 → Minecraft Wiki 搜索 出现插件卡片；
-- 直接对模型说「用 mcwiki_search 查一下苦力怕」即可触发。
+## 更新
+
+```sh
+dsh plugin --profile web update "@dshp-inx/mcwiki-search" --latest
+dsh web
+```
+
+`update --latest` 会让 pnpm 重新解析 GitHub 仓库的最新 commit 并更新 lockfile；重启后生效。
+
+## 安装（备选：clone 源码 + 本地 link）
+
+适合想改源码、或 GitHub 不可达的场景。link 安装的源码改动**即时生效**（client 半刷新页面即可，host 半需重启 `dsh web`）：
+
+```sh
+git clone git@github.com:Yinxe/dsh-mcwiki-search.git ~/.dsh/plugins/mcwiki-search
+dsh plugin --profile web add "@dshp-inx/mcwiki-search@link:~/.dsh/plugins/mcwiki-search
+# 若 pnpm 不展开 ~，改用绝对路径：
+# dsh plugin --profile web add "@dshp-inx/mcwiki-search@link:/home/<you>/.dsh/plugins/mcwiki-search
+dsh web
+```
+
+> ⚠️ **不要直接编辑 `node_modules/@dshp-inx/mcwiki-search/` 里的文件**：pnpm 的安装文件与内容寻址 store 硬链接，直接覆盖会连带改坏 store。改源码请改 link 指向的源码目录。
+
+link 方式的更新就是 `git pull`（源码目录）+ 刷新页面/重启。
 
 ## 验证（不依赖 DSH 运行时）
 
@@ -86,16 +100,14 @@ DSH_TOOLS_ENTRY=/path/to/node_modules/@deepseek-ai/dsh-tools/lib/index.js \
   node test/integration.mjs
 ```
 
-## 打包与发布（npm）
+## 卸载
 
 ```sh
-cd ~/.dsh/plugins/mcwiki-search
-npm pack            # 生成 mcwiki-search-1.0.0.tgz
-npm publish         # 需先在 npmjs 登录（publishConfig.access=public）
+dsh plugin --profile web remove "@dshp-inx/mcwiki-search"
+dsh web
 ```
 
-零运行时依赖：仅使用 Node ≥ 20 全局 `fetch`，可随 npm 包安装到任意 DSH profile
-（`pnpm add mcwiki-search` + patch 挂载），也可 fork 定制后发到私有 registry。
+`remove` 会自动从 `dsh.profile.bundles` 撤下挂载。
 
 ## 配置
 
@@ -111,12 +123,6 @@ patch 层可覆盖（`config:` 字段），默认值即开即用：
     introMaxChars: 0     # 引言上限：0 = 不截断（默认）
     searchMaxResults: 8  # 搜索默认条数
 ```
-
-## 卸载
-
-1. 删除 `cordis.patch.yml` 中 `mcwiki-search` 挂载行；
-2. `cd ~/.dsh/profiles/web && rm -f node_modules/mcwiki-search && pnpm remove mcwiki-search`；
-3. 删除 `~/.dsh/plugins/mcwiki-search`。
 
 ## 免责声明
 

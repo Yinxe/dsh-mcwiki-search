@@ -45,6 +45,16 @@ dsh plugin --profile web add github:Yinxe/dsh-mcwiki-search
 
 `dsh plugin` 把参数转发给 profile 目录里的 pnpm，装完自动把插件写进 profile 的 `dsh.profile.bundles` 挂载列表 —— **无需手动改任何配置文件**。
 
+**一键 AI 安装**：把下面这段直接发给你的 DSH AI（复制即用，无需修改）：
+
+```text
+帮我安装 Minecraft Wiki 搜索插件（GitHub 仓库 Yinxe/dsh-mcwiki-search，包名 @dshp-inx/mcwiki-search）：
+1. 执行 dsh plugin --profile web add github:Yinxe/dsh-mcwiki-search
+2. 重启 web 服务（dsh web），确认重启无报错
+3. 验证插件已生效（设置页出现 Minecraft Wiki 搜索卡片，或注册出 mcwiki_search 工具）
+4. 用 mcwiki_search 帮我查一下「苦力怕」，展示一条结果确认链路通畅
+```
+
 重启生效：
 
 ```sh

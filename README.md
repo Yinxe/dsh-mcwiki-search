@@ -64,17 +64,17 @@ dsh web
 
 ## 安装（备选：clone 源码 + 本地 link）
 
-适合想改源码、或 GitHub 不可达的场景。link 安装的源码改动**即时生效**（client 半刷新页面即可，host 半需重启 `dsh web`）：
+适合想改源码、或 GitHub 不可达的场景。clone 后用 `add ./<目录>` 安装 —— **依赖按插件真实包名（`@dshp-inx/mcwiki-search`）登记**，后续 update / remove 与 GitHub 安装完全一致。link 安装的源码改动**即时生效**（client 半刷新页面即可，host 半需重启 `dsh web`）：
 
 ```sh
 git clone git@github.com:Yinxe/dsh-mcwiki-search.git ~/.dsh/plugins/mcwiki-search
-dsh plugin --profile web add "@dshp-inx/mcwiki-search@link:~/.dsh/plugins/mcwiki-search
-# 若 pnpm 不展开 ~，改用绝对路径：
-# dsh plugin --profile web add "@dshp-inx/mcwiki-search@link:/home/<you>/.dsh/plugins/mcwiki-search
+cd ~/.dsh/plugins
+dsh plugin --profile web add ./mcwiki-search
 dsh web
 ```
 
-> ⚠️ **不要直接编辑 `node_modules/@dshp-inx/mcwiki-search/` 里的文件**：pnpm 的安装文件与内容寻址 store 硬链接，直接覆盖会连带改坏 store。改源码请改 link 指向的源码目录。
+> `add ./<目录>` 的相对路径按**你执行命令时所在的目录**解析，先 `cd` 到插件目录的父级再执行。
+> ⚠️ **不要直接编辑 `node_modules/@dshp-inx/mcwiki-search/` 里的文件**：pnpm 的安装文件与内容寻址 store 硬链接，直接覆盖会连带改坏 store。改源码请改 clone 出来的源码目录。
 
 link 方式的更新就是 `git pull`（源码目录）+ 刷新页面/重启。
 
@@ -107,7 +107,7 @@ dsh plugin --profile web remove "@dshp-inx/mcwiki-search"
 dsh web
 ```
 
-`remove` 会自动从 `dsh.profile.bundles` 撤下挂载。
+`remove` 会自动从 `dsh.profile.bundles` 撤下挂载；clone 安装的再删掉 `~/.dsh/plugins/mcwiki-search` 目录即可。
 
 ## 配置
 

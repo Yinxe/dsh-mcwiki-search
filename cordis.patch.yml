@@ -2,5 +2,5 @@
 # Provides mcwiki_search, mcwiki_get_page, mcwiki_random tools.
 
 - insert:
-    - id: mcwiki-search
+    - id: dshp-inx-mcwiki-search
       name: "@dshp-inx/mcwiki-search"

@@ -53,6 +53,8 @@ window.__ModuleLoader__.load({
     function createSection(bridge) {
       return function McWikiSettingsSection() {
         const [info, setInfo] = React.useState(null)
+        const [cfg, setCfg] = React.useState(null)
+        const [cfgBusy, setCfgBusy] = React.useState(false)
         const [stateErr, setStateErr] = React.useState(null)
         const [notice, setNotice] = React.useState(null)
         const [busy, setBusy] = React.useState(null)
@@ -63,11 +65,27 @@ window.__ModuleLoader__.load({
 
         const load = React.useCallback(() => {
           bridge.getState().then((value) => {
-            if (value && value.ok) { setInfo(value); setStateErr(null) }
+            if (value && value.ok) { setInfo(value); setCfg((value && value.config) || null); setStateErr(null) }
             else setStateErr((value && value.error) || '无法读取插件状态')
           }).catch((error) => setStateErr(String((error && error.message) || error)))
         }, [])
         React.useEffect(() => { load() }, [load])
+
+        const saveCfg = () => {
+          if (cfg === null) return
+          setCfgBusy(true); setNotice(null)
+          bridge.saveConfig(cfg).then((value) => {
+            setCfgBusy(false)
+            if (value && value.ok) {
+              setCfg(value.config)
+              setNotice({ kind: 'ok', text: '配置已保存到 settings.yaml（dshp-inx-mcwiki-search），即时生效。' })
+              load()
+            } else setNotice({ kind: 'err', text: (value && value.error) || '保存失败' })
+          }).catch((error) => {
+            setCfgBusy(false)
+            setNotice({ kind: 'err', text: String((error && error.message) || error) })
+          })
+        }
 
         const runSearch = () => {
           const q = query.trim()
@@ -113,6 +131,41 @@ window.__ModuleLoader__.load({
           React.createElement(Row, { label: '模型工具' }, React.createElement('span', null, ((info && info.tools) || ['mcwiki_search', 'mcwiki_get_page', 'mcwiki_random']).join('、'))),
           React.createElement(Row, { label: '无密钥' }, React.createElement(Badge, { kind: 'ok', text: '免费公开 API' })))
         children.push(statusCard)
+
+        const numField = (label, key, hint) => React.createElement(Row, { label },
+          React.createElement('input', {
+            className: 'mw-input',
+            style: { maxWidth: 140, textAlign: 'right' },
+            inputMode: 'numeric',
+            disabled: cfgBusy || cfg === null,
+            value: cfg === null ? '' : String(cfg[key]),
+            onChange: (event) => {
+              const v = event.target.value
+              setCfg((prev) => prev === null ? prev : { ...prev, [key]: v === '' ? 0 : Number(v) })
+            },
+            title: hint
+          }))
+        const configCard = React.createElement('div', { className: 'mw-card' },
+          React.createElement('div', { style: { fontWeight: 600, marginBottom: 6 } }, '配置（settings.yaml · dshp-inx-mcwiki-search）'),
+          React.createElement(Row, { label: 'API 端点' },
+            React.createElement('input', {
+              className: 'mw-input',
+              disabled: cfgBusy || cfg === null,
+              placeholder: 'https://zh.minecraft.wiki/api.php',
+              value: cfg === null ? '' : (cfg.apiBase || ''),
+              onChange: (event) => {
+                const v = event.target.value
+                setCfg((prev) => prev === null ? prev : { ...prev, apiBase: v })
+              }
+            })),
+          numField('请求超时(ms)', 'timeoutMs', '≥1000'),
+          numField('搜索默认条数', 'searchMaxResults', '≥1'),
+          numField('全文上限(0=不截断)', 'maxChars', '≥0，0 表示完整输出'),
+          numField('引言上限(0=不截断)', 'introMaxChars', '≥0，0 表示完整输出'),
+          React.createElement('div', { style: { marginTop: 10, display: 'flex', gap: 8 } },
+            React.createElement('button', { className: 'mw-btn mw-btn-primary', disabled: cfgBusy || cfg === null, onClick: saveCfg }, cfgBusy ? '保存中…' : '保存配置'),
+            React.createElement('button', { className: 'mw-btn', disabled: cfgBusy, onClick: load }, '重新读取')))
+        children.push(configCard)
 
         const testRow = React.createElement('div', { className: 'mw-test-bar' },
           React.createElement('input', {
@@ -187,11 +240,19 @@ window.__ModuleLoader__.load({
 
       const bridge = {
         getState: async () => {
-          const response = await fetch('/ext/mcwiki/state', { cache: 'no-store' })
+          const response = await fetch('/ext/dshp-inx-mcwiki-search/state', { cache: 'no-store' })
+          return response.json()
+        },
+        saveConfig: async (patchValue) => {
+          const response = await fetch('/ext/dshp-inx-mcwiki-search/config', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(patchValue || {})
+          })
           return response.json()
         },
         runTest: async (value, kind) => {
-          const response = await fetch('/ext/mcwiki/test', {
+          const response = await fetch('/ext/dshp-inx-mcwiki-search/test', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify(kind === 'page' ? { query: value, title: value, section: 'full' } : { query: value, section: 'intro' })
@@ -201,14 +262,14 @@ window.__ModuleLoader__.load({
       }
 
       const sectionStyle = document.createElement('style')
-      sectionStyle.setAttribute('data-plugin-css', 'mcwiki-search/settings.css')
+      sectionStyle.setAttribute('data-plugin-css', 'dshp-inx-mcwiki-search/settings.css')
       sectionStyle.textContent = CSS
       document.head.appendChild(sectionStyle)
       ctx.effect(() => () => sectionStyle.remove(), 'mcwiki-search: section styles')
 
       const Section = createSection(bridge)
       slots.inject('settings.section', () => slots.register(
-        { name: 'settings.section', id: 'mcwiki-search', order: 26, label: 'Minecraft Wiki 搜索' },
+        { name: 'settings.section', id: 'dshp-inx-mcwiki-search', order: 26, label: 'Minecraft Wiki 搜索' },
         Section
       ))
     }

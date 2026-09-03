@@ -14,9 +14,19 @@ DeepSeek Harness（DSH）工具插件：查询 **Minecraft Wiki**（MediaWiki AP
 | `mcwiki_get_page` | 抓取页面 | `section=intro` 纯文本引言（默认）；`section=full` 全文 → Markdown / 纯文本 / wikitext。**默认完整输出、不截断**；可传 `maxChars`（0=不截断，正数=上限）按需设限 |
 | `mcwiki_random` | 随机条目 | 条目标题 + 引言纯文本（完整、不截断） |
 
-配套「设置 → Minecraft Wiki 搜索」页面：查看数据源状态、搜索测试、页面转换测试（直接看转换后的文本）。
+配套「设置 → Minecraft Wiki 搜索」页面：数据源状态、**配置卡**（API 端点 / 超时 / 搜索条数 / 全文与引言上限，直接保存到 `settings.yaml` 即时生效）、搜索测试、页面转换测试（直接看转换后的文本）。
 
 > **完整性承诺**：搜索摘要、引言、全文（含表格）默认**完整输出、绝不截断** —— 所有信息与细节都保留给 AI。只有显式传 `maxChars`（正整数）或部署配置设限时才会截断，且输出末尾会明确标注。设置页中的转换测试为 UI 预览（最多 6000 字符），与模型工具无关。
+
+## 同源路由
+
+| 方法 | 路径 | 作用 |
+|------|------|------|
+| GET | `/ext/dshp-inx-mcwiki-search/state` | 数据源状态 + 当前生效配置快照 |
+| POST | `/ext/dshp-inx-mcwiki-search/config` | 保存配置补丁（`apiBase/timeoutMs/maxChars/introMaxChars/searchMaxResults`，写 `settings.yaml`） |
+| POST | `/ext/dshp-inx-mcwiki-search/test` | 连接测试（搜索 + 页面抓取） |
+
+全部带同源校验（`Origin` 与 `Host` 一致或缺失才放行）。工具与路由每次调用都读当前生效配置，`settings.yaml` 外部编辑热重载、无需重启。
 
 ## 数据转换管线
 
@@ -103,7 +113,7 @@ node lib/self-test.js --no-page       # 仅搜索
 
 ```sh
 # 方式 A：在任意 DSH profile 目录内运行（dsh-tools 按 profile 解析）
-cd ~/.dsh/profiles/web && node ../../plugins/mcwiki-search/test/integration.mjs
+cd ~/.dsh/profiles/web && node ../../plugins/dsh-mcwiki-search/test/integration.mjs
 
 # 方式 B：任意位置，显式指定 dsh-tools 入口
 DSH_TOOLS_ENTRY=/path/to/node_modules/@deepseek-ai/dsh-tools/lib/index.js \
@@ -117,15 +127,16 @@ dsh plugin --profile web remove "@dshp-inx/mcwiki-search"
 dsh web
 ```
 
-`remove` 会自动从 `dsh.profile.bundles` 撤下挂载；clone 安装的再删掉 `~/.dsh/plugins/mcwiki-search` 目录即可。
+`remove` 会自动从 `dsh.profile.bundles` 撤下挂载；clone 安装的再删掉 `~/.dsh/plugins/dsh-mcwiki-search` 目录即可。
 
-## 配置
+## 配置（标准 settings 存储）
 
-patch 层可覆盖（`config:` 字段），默认值即开即用：
+持久化到 `settings.yaml` 的 `dshp-inx-mcwiki-search` 命名空间，设置页可直接改，外部编辑热重载。
+`config:` patch 层仍可覆盖默认值（settings 的 base 层），即开即用：
 
 ```yaml
-- id: mcwiki-search
-  name: mcwiki-search
+- id: dshp-inx-mcwiki-search
+  name: "@dshp-inx/mcwiki-search"
   config:
     apiBase: https://zh.minecraft.wiki/api.php   # 或 en: https://minecraft.wiki/api.php
     timeoutMs: 15000

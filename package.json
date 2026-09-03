@@ -19,7 +19,6 @@
     "client.js",
     "cordis.patch.yml",
     "test",
-    "scripts",
     "README.md",
     "LICENSE"
   ],
@@ -44,12 +43,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Yinxe/mcwiki-search.git"
+    "url": "git+https://github.com/Yinxe/dsh-mcwiki-search.git"
   },
   "bugs": {
-    "url": "https://github.com/Yinxe/mcwiki-search/issues"
+    "url": "https://github.com/Yinxe/dsh-mcwiki-search/issues"
   },
-  "homepage": "https://github.com/Yinxe/mcwiki-search#readme",
+  "homepage": "https://github.com/Yinxe/dsh-mcwiki-search#readme",
   "publishConfig": {
     "access": "public"
   },

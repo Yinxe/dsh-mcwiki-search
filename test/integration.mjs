@@ -6,22 +6,47 @@
  *
  * 运行：
  *   方式 A（profile 内，裸包解析）：
- *     cd ~/.dsh/profiles/web && node ../../plugins/mcwiki-search/test/integration.mjs
+ *     cd ~/.dsh/profiles/web && node ../../plugins/dsh-mcwiki-search/test/integration.mjs
  *   方式 B（任意位置，显式指定 dsh-tools 入口）：
  *     DSH_TOOLS_ENTRY=/path/to/dsh-tools/lib/index.js node test/integration.mjs
  *
- * 验证：apply 注册 / schema 通过 DSH 校验 / 三个工具真实执行 / 测试路由。
+ * 验证：apply 注册 / schema 通过 DSH 校验 / 三个工具真实执行 / 测试路由 / settings 往返。
  */
 const dshTools = await import(process.env.DSH_TOOLS_ENTRY || '@deepseek-ai/dsh-tools')
 const { assertSupportedJsonSchema, validateJsonSchemaValue } = dshTools
 const { apply } = await import('../lib/index.js')
+
+// ── 最小 settings 服务（内存实现：base ← user 分层 + schema 校验）─────────
+function createMockSettings() {
+  const spaces = new Map()
+  const api = {
+    register(ns, schema, opts = {}) {
+      if (spaces.has(ns)) throw new Error('duplicate ns ' + ns)
+      const sp = { schema, base: { ...(opts.base || {}) }, user: {} }
+      spaces.set(ns, sp)
+      const resolve = () => sp.schema({ ...sp.base, ...sp.user })
+      return { get: resolve, watch: () => () => {}, update: async (patch) => { await api.update(ns, patch) } }
+    },
+    get(ns) { const sp = spaces.get(ns); return sp ? sp.schema({ ...sp.base, ...sp.user }) : undefined },
+    async update(ns, patch) {
+      const sp = spaces.get(ns)
+      if (!sp) throw new Error('unknown ns ' + ns)
+      const next = { ...sp.user, ...(patch || {}) }
+      sp.schema({ ...sp.base, ...next }) // 先校验再提交
+      sp.user = next
+    }
+  }
+  return api
+}
+const mockSettings = createMockSettings()
 
 const tools = []
 const routes = []
 const ctx = {
   tools: { register(definition) { tools.push(definition); return () => {} } },
   webServer: { register(entry) { routes.push(entry) } },
-  get(key) { return key === 'systemPrompt' ? undefined : undefined },
+  get(key) { if (key === 'settings') return mockSettings; return key === 'systemPrompt' ? undefined : undefined },
+  inject(deps, cb) { if (deps.includes('settings')) cb({ ...ctx, settings: mockSettings }); return () => {} },
   effect(fn) { return fn() }
 }
 
@@ -33,7 +58,7 @@ const check = (label, ok, detail) => {
 
 apply(ctx, {})
 check('apply() 注册了 3 个工具', tools.length === 3, tools.map((t) => t.name).join(', '))
-check('apply() 注册了 2 个路由', routes.length === 2, routes.map((r) => r.path).join(', '))
+check('apply() 注册了 3 个路由', routes.length === 3, routes.map((r) => r.path).join(', '))
 
 for (const tool of tools) {
   try {
@@ -90,7 +115,7 @@ try {
   check('mcwiki_random', false, String((error && error.message) || error))
 }
 
-const testRoute = routes.find((r) => r.path === '/ext/mcwiki/test')
+const testRoute = routes.find((r) => r.path === '/ext/dshp-inx-mcwiki-search/test')
 const req = (body) => ({
   method: 'POST',
   headers: { host: '127.0.0.1:3080' },
@@ -103,9 +128,32 @@ const res = {
 }
 try {
   await testRoute.handler(req({ query: '红石', limit: 3, section: 'intro' }), res)
-  check('/ext/mcwiki/test 路由', payload.ok === true && payload.totalHits > 0, `共 ${payload.totalHits} 条，${payload.takenMs} ms`)
+  check('/ext/dshp-inx-mcwiki-search/test 路由', payload.ok === true && payload.totalHits > 0, `共 ${payload.totalHits} 条，${payload.takenMs} ms`)
 } catch (error) {
-  check('/ext/mcwiki/test 路由', false, String((error && error.message) || error))
+  check('/ext/dshp-inx-mcwiki-search/test 路由', false, String((error && error.message) || error))
+}
+
+// ── settings 往返（离线）：config 校验 + 写入 + state 可见 ──────────────────
+const configRoute = routes.find((r) => r.path === '/ext/dshp-inx-mcwiki-search/config')
+const stateRoute = routes.find((r) => r.path === '/ext/dshp-inx-mcwiki-search/state')
+const getReq = {
+  method: 'GET',
+  headers: { host: '127.0.0.1:3080' },
+  on(event, cb) { if (event === 'data') cb(Buffer.from('{}')); else if (event === 'end') cb() }
+}
+try {
+  payload = null
+  await configRoute.handler(req({ timeoutMs: 50 }), res)
+  check('config 拒绝非法 timeoutMs', payload.ok === false, payload.error)
+  payload = null
+  await configRoute.handler(req({ timeoutMs: 20000, searchMaxResults: 5 }), res)
+  check('config 写入 settings', payload.ok === true && payload.config.timeoutMs === 20000 && payload.config.searchMaxResults === 5,
+    JSON.stringify(payload.config))
+  payload = null
+  await stateRoute.handler(getReq, res)
+  check('state 读到新配置', payload.ok === true && payload.config.timeoutMs === 20000)
+} catch (error) {
+  check('config 路由', false, String((error && error.message) || error))
 }
 
 console.log(failures === 0 ? '\n🎉 集成测试全部通过' : `\n💥 ${failures} 项失败`)
